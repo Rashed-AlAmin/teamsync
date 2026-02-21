@@ -1,0 +1,88 @@
+# =========================
+
+# Node.js
+
+# =========================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+
+# Environment variables
+
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+
+# Firebase (VERY IMPORTANT)
+
+# =========================
+
+backend/teamsync-firebase-key.json
+firebase-debug.log
+.firebase/
+
+# =========================
+
+# Build folders
+
+# =========================
+
+dist/
+build/
+.next/
+out/
+
+# =========================
+
+# Logs
+
+# =========================
+
+logs/
+*.log
+
+# =========================
+
+# OS files
+
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# IDE files
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+
+# Testing
+
+# =========================
+
+coverage/
+
+# =========================
+
+# Misc
+
+# =========================
+
+.tmp/
+.temp/
