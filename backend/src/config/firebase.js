@@ -9,13 +9,14 @@ const serviceAccount = require(path.join(__dirname, "../../serviceAccountKey.jso
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-    // No databaseURL needed for us-central1 default
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
   });
 }
 
 const adminDb = admin.firestore();
 const adminAuth = admin.auth();
+const adminStorage = admin.storage();
 
 // 2. CLIENT (New .env values)
 const firebaseConfig = {
@@ -35,4 +36,4 @@ adminDb.collection('test').doc('conn').set({ ok: true })
   .then(() => console.log("🚀 BOOM! Connection Successful!"))
   .catch((e) => console.log("❌ Still failing:", e.message));
 
-module.exports = { adminDb, adminAuth, clientAuth };
+module.exports = { adminDb, adminAuth, adminStorage, clientAuth };
