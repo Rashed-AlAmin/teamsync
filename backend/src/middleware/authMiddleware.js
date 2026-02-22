@@ -1,4 +1,4 @@
-const { admin } = require("../config/firebase");
+const { adminAuth } = require("../config/firebase");
 
 const verifyToken = async (req, res, next) => {
   try {
@@ -10,16 +10,26 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    // Split "Bearer <token>" to get just the string
     const token = authHeader.split(" ")[1];
 
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    if (!token) {
+      return res.status(401).json({
+        message: "Malformed token header",
+      });
+    }
+
+    // Use adminAuth directly (no .auth() call needed)
+    const decodedToken = await adminAuth.verifyIdToken(token);
 
     req.user = decodedToken;
-
     next();
   } catch (error) {
+    console.error("Firebase Auth Error:", error.code, error.message);
+
     return res.status(401).json({
       message: "Unauthorized",
+      error: error.message 
     });
   }
 };
