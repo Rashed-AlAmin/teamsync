@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
+import Layout from './components/Layout';
+import WorkspacePage from './pages/WorkspacePage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -25,18 +27,25 @@ const App = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
       <Route
-        path="/dashboard"
+        path="/"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="*"
-        element={<Navigate to="/dashboard" replace />}
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="workspace/:workspaceId" element={<WorkspacePage />} />
+        <Route
+          path="workspace/:workspaceId/channel/:channelId"
+          element={<WorkspacePage />}
+        />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
