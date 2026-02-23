@@ -1,88 +1,71 @@
 # =========================
-
-# Node.js
-
+# Node.js & Dependencies
 # =========================
-
 node_modules/
+**/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
 # =========================
-
-# Environment variables
-
+# Environment variables (CRITICAL)
 # =========================
-
 .env
 .env.*
 !.env.example
+backend/.env
+frontend/.env
+frontend/.env.local
 
 # =========================
-
-# Firebase (VERY IMPORTANT)
-
+# Firebase & Secrets (DO NOT REMOVE)
 # =========================
-
-backend/teamsync-firebase-key.json
+backend/serviceAccountKey.json
+# Catch any stray service account files
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
 firebase-debug.log
 .firebase/
 
 # =========================
-
-# Build folders
-
+# Build & Tooling
 # =========================
-
 dist/
+**/dist/
 build/
 .next/
 out/
+.vercel
+.turbo
 
 # =========================
-
 # Logs
-
 # =========================
-
 logs/
 *.log
 
 # =========================
-
-# OS files
-
+# OS & IDE
 # =========================
-
 .DS_Store
 Thumbs.db
-
-# =========================
-
-# IDE files
-
-# =========================
-
 .vscode/
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
+.cursor/
 
 # =========================
-
 # Testing
-
 # =========================
-
 coverage/
 
 # =========================
-
 # Misc
-
 # =========================
-
 .tmp/
 .temp/
