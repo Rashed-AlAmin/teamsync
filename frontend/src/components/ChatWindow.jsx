@@ -3,6 +3,16 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import MessageInput from './MessageInput';
 
+// --- ADD THESE FIREBASE IMPORTS ---
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  limit, 
+  onSnapshot 
+} from 'firebase/firestore';
+import { db } from '../lib/firebase'; // Ensure this path matches your firebase config file!
+
 const ChatWindow = ({ workspaceId, channel, channelId }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -10,9 +20,7 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
   const [error, setError] = useState('');
   const scrollRef = useRef(null);
 
-  // --- HOOKS MUST BE AT THE TOP ---
-
-  // 1. Grouping logic (Moved up)
+  // 1. Grouping logic (Remains the same)
   const groupedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
     const groups = [];
@@ -38,53 +46,53 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
     return groups;
   }, [messages]);
 
-  // 2. Fetching Logic
+  // 2. Real-Time Fetching Logic
   useEffect(() => {
-    if (!workspaceId || !channelId) {
-        setMessages([]);
-        setLoading(false);
-        return;
-    }
-
     setMessages([]);
     setError('');
     setLoading(true);
 
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await api.get(`/workspaces/${workspaceId}/channels/${channelId}/messages`);
-        if (!cancelled) {
-          setMessages(res.data || []);
-          setError('');
-          setLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError('Failed to load messages');
-          setLoading(false);
-        }
-      }
-    };
+    if (!workspaceId || !channelId) {
+      setLoading(false);
+      return;
+    }
 
-    load();
-    const intervalId = setInterval(load, 3000);
+    // Set up real-time listener
+    const messagesRef = collection(db, 'workspaces', workspaceId, 'channels', channelId, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(50));
 
-    return () => {
-      cancelled = true;
-      clearInterval(intervalId);
-    };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate?.()?.toISOString() || new Date().toISOString()
+        };
+      });
+
+      setMessages(docs.reverse());
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore Listener Error:", err);
+      setError('Failed to connect to real-time updates');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [workspaceId, channelId]);
 
-  // 3. Scroll Logic
+  // 3. Scroll Logic (Remains the same)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [groupedMessages]); // Removed channelId here to prevent double-scroll
+  }, [groupedMessages]);
 
   const handleSend = async (content) => {
     if (!workspaceId || !channelId || !user) return;
+    
+    // We can keep the optimistic update or remove it since real-time is so fast
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.uid,
@@ -93,7 +101,9 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
       type: 'text',
       timestamp: new Date().toISOString(),
     };
+    
     setMessages((prev) => [...prev, optimistic]);
+    
     try {
       await api.post(`/workspaces/${workspaceId}/channels/${channelId}/messages`, { content });
     } catch (err) {
@@ -101,7 +111,6 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
     }
   };
 
-  // --- NOW THE EARLY RETURNS ---
   if (!workspaceId || !channelId) {
     return (
       <div className="flex h-full flex-1 flex-col bg-slate-950">

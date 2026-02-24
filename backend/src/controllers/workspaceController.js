@@ -56,19 +56,37 @@ const createWorkspace = async (req, res) => {
 
 const getWorkspaces = async (req, res) => {
   try {
-    const ownerId = req.user.uid;
+    const userId = req.user.uid;
 
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where("ownerId", "==", ownerId)
+    // 1. Find all "members" documents across the whole DB that match this user's UID
+    // This requires a Firestore index. Check your terminal/console for a link if it fails.
+    const memberSnapshot = await db
+      .collectionGroup(MEMBERS_COLLECTION)
+      .where("uid", "==", userId)
       .get();
 
-    const workspaces = snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() ?? doc.data().createdAt,
-      }))
+    if (memberSnapshot.empty) {
+      return res.json([]);
+    }
+
+    // 2. For each member record, get the parent Workspace document
+    const workspacePromises = memberSnapshot.docs.map(async (memberDoc) => {
+      // memberDoc.ref.parent is the "members" collection
+      // memberDoc.ref.parent.parent is the actual Workspace document
+      const workspaceDoc = await memberDoc.ref.parent.parent.get();
+      
+      if (!workspaceDoc.exists) return null;
+
+      const data = workspaceDoc.data();
+      return {
+        id: workspaceDoc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+      };
+    });
+
+    const workspaces = (await Promise.all(workspacePromises))
+      .filter(ws => ws !== null) // Remove any nulls if a workspace was deleted
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json(workspaces);

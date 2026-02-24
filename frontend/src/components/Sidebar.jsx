@@ -29,7 +29,7 @@ const Sidebar = () => {
     };
 
     fetchWorkspaces();
-    return () => { active = false; }; // Cleanup prevents crashing on unmount
+    return () => { active = false; };
   }, []);
 
   const handleCreate = async (e) => {
@@ -50,12 +50,14 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-slate-800 bg-slate-950/95 text-slate-50">
+    // FIX: Changed w-64 to w-full max-w-[240px] to allow flex-shrink
+    <aside className="flex h-screen w-full max-w-[240px] flex-col border-r border-slate-800 bg-slate-950/95 text-slate-50 shrink-0">
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
-        <span className="text-sm font-semibold tracking-tight">TeamSync</span>
+        {/* FIX: Added truncate to ensure the logo/name doesn't break the layout */}
+        <span className="text-sm font-semibold tracking-tight truncate mr-2">TeamSync</span>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600 font-bold hover:bg-indigo-500"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 font-bold hover:bg-indigo-500"
         >
           +
         </button>
@@ -77,7 +79,7 @@ const Sidebar = () => {
                   }`
                 }
               >
-                <span className="h-6 w-6 flex items-center justify-center rounded bg-slate-800 text-[10px] uppercase">
+                <span className="h-6 w-6 shrink-0 flex items-center justify-center rounded bg-slate-800 text-[10px] uppercase">
                   {ws.name?.charAt(0)}
                 </span>
                 <span className="truncate">{ws.name}</span>
@@ -87,9 +89,9 @@ const Sidebar = () => {
         )}
       </div>
 
-      <div className="border-t border-slate-800 p-3 flex items-center justify-between">
-        <span className="text-[10px] text-slate-400 truncate">{user?.email}</span>
-        <button onClick={logout} className="text-[10px] border border-slate-700 px-2 py-1 rounded hover:bg-slate-800">
+      <div className="border-t border-slate-800 p-3 flex items-center justify-between gap-2">
+        <span className="text-[10px] text-slate-400 truncate flex-1">{user?.email}</span>
+        <button onClick={logout} className="text-[10px] border border-slate-700 px-2 py-1 rounded hover:bg-slate-800 shrink-0">
           Logout
         </button>
       </div>
@@ -102,13 +104,13 @@ const Sidebar = () => {
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 p-2 rounded mb-4"
+                className="w-full bg-slate-950 border border-slate-800 p-2 rounded mb-4 outline-none focus:border-indigo-600"
                 placeholder="Workspace Name"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm">Cancel</button>
-                <button type="submit" className="bg-indigo-600 px-4 py-2 text-sm rounded">{creating ? '...' : 'Create'}</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm hover:text-white transition-colors">Cancel</button>
+                <button type="submit" className="bg-indigo-600 px-4 py-2 text-sm rounded hover:bg-indigo-500 transition-colors">{creating ? '...' : 'Create'}</button>
               </div>
             </form>
           </div>
