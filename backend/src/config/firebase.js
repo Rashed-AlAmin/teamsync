@@ -5,9 +5,19 @@ const { getAuth } = require("firebase/auth");
 const path = require("path");
 
 // 1. ADMIN (Use the new file name you chose)
-const serviceAccount = require(path.join(__dirname, "../../serviceAccountKey.json"));
+let serviceAccount;
 
-if (!admin.apps.length) {
+try {
+  // If the variable is a string (like on Render), parse it. 
+  // If it's already an object, use it.
+  serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string' 
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) 
+    : process.env.FIREBASE_SERVICE_ACCOUNT;
+} catch (error) {
+  console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT:", error.message);
+}
+
+if (!admin.apps.length && serviceAccount) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
