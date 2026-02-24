@@ -3,16 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import MessageInput from './MessageInput';
 
-// --- ADD THESE FIREBASE IMPORTS ---
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  onSnapshot 
-} from 'firebase/firestore';
-import { db } from '../lib/firebase'; // Ensure this path matches your firebase config file!
-
 const ChatWindow = ({ workspaceId, channel, channelId }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -20,17 +10,63 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
   const [error, setError] = useState('');
   const scrollRef = useRef(null);
 
-  // 1. Grouping logic (Remains the same)
+  useEffect(() => {
+    setMessages([]);
+    setError('');
+    setLoading(true);
+
+    if (!workspaceId || !channelId) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let intervalId;
+
+    const load = async () => {
+      try {
+        const res = await api.get(
+          `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+        );
+        if (!cancelled) {
+          setMessages(res.data || []);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError('Failed to load messages');
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    intervalId = setInterval(load, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [workspaceId, channelId]);
+
   const groupedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
+
     const groups = [];
     const now = new Date();
 
     const getLabel = (date) => {
       const d = new Date(date);
-      if (d.toDateString() === now.toDateString()) return 'Today';
-      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+      const isToday = d.toDateString() === now.toDateString();
+      const yesterday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 1,
+      );
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+      if (isToday) return 'Today';
+      if (isYesterday) return 'Yesterday';
       return d.toLocaleDateString();
     };
 
@@ -43,69 +79,39 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
         lastGroup.items.push(msg);
       }
     });
+
     return groups;
   }, [messages]);
 
-  // 2. Real-Time Fetching Logic
-  useEffect(() => {
-    setMessages([]);
-    setError('');
-    setLoading(true);
-
-    if (!workspaceId || !channelId) {
-      setLoading(false);
-      return;
-    }
-
-    // Set up real-time listener
-    const messagesRef = collection(db, 'workspaces', workspaceId, 'channels', channelId, 'messages');
-    const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(50));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          timestamp: data.timestamp?.toDate?.()?.toISOString() || new Date().toISOString()
-        };
-      });
-
-      setMessages(docs.reverse());
-      setLoading(false);
-    }, (err) => {
-      console.error("Firestore Listener Error:", err);
-      setError('Failed to connect to real-time updates');
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [workspaceId, channelId]);
-
-  // 3. Scroll Logic (Remains the same)
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      scrollRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+      });
     }
-  }, [groupedMessages]);
+  }, [groupedMessages, channelId]);
 
   const handleSend = async (content) => {
     if (!workspaceId || !channelId || !user) return;
-    
-    // We can keep the optimistic update or remove it since real-time is so fast
+
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.uid,
-      senderName: user.email || 'You',
+      senderName: user.displayName || user.email || 'You',
       content,
       type: 'text',
       timestamp: new Date().toISOString(),
     };
-    
+
     setMessages((prev) => [...prev, optimistic]);
-    
+
     try {
-      await api.post(`/workspaces/${workspaceId}/channels/${channelId}/messages`, { content });
+      await api.post(
+        `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+        { content },
+      );
+      // Polling will pick up the confirmed message from backend.
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     }
@@ -126,39 +132,62 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
       <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-slate-500">#</span>
-          <h2 className="text-sm font-semibold">{channel?.name || 'Channel'}</h2>
+          <h2 className="text-sm font-semibold">
+            {channel?.name || 'Channel'}
+          </h2>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {loading && <div className="text-xs text-slate-400">Loading messages...</div>}
-        {!loading && error && <div className="text-xs text-red-400">{error}</div>}
-        {!loading && !error && messages.length === 0 && (
-          <div className="text-xs text-slate-500">No messages yet.</div>
+        {loading && (
+          <div className="text-xs text-slate-400">Loading messages...</div>
         )}
-        {!loading && !error && groupedMessages.map((group) => (
-          <div key={group.label} className="space-y-2">
-            <div className="flex items-center justify-center">
-              <span className="rounded-full bg-slate-900 px-3 py-0.5 text-[10px] font-medium text-slate-400 border border-slate-800">
-                {group.label}
-              </span>
-            </div>
-            {group.items.map((msg) => (
-              <div key={msg.id} className="flex flex-col text-sm">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-medium text-slate-100">{msg.senderName}</span>
-                  <span className="text-[10px] text-slate-500">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <div className="text-slate-200 whitespace-pre-wrap">{msg.content}</div>
-              </div>
-            ))}
+        {!loading && error && (
+          <div className="text-xs text-red-400">{error}</div>
+        )}
+        {!loading && !error && messages.length === 0 && (
+          <div className="text-xs text-slate-500">
+            No messages yet. Start the conversation!
           </div>
-        ))}
+        )}
+        {!loading &&
+          !error &&
+          groupedMessages.map((group) => (
+            <div key={group.label} className="space-y-2">
+              <div className="flex items-center justify-center">
+                <span className="rounded-full bg-slate-900 px-3 py-0.5 text-[10px] font-medium text-slate-400 border border-slate-800">
+                  {group.label}
+                </span>
+              </div>
+              {group.items.map((msg) => (
+                <div key={msg.id} className="flex flex-col text-sm">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-medium text-slate-100">
+                      {msg.senderName || 'Unknown'}
+                    </span>
+                    {msg.timestamp && (
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-slate-200 whitespace-pre-wrap">
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
         <div ref={scrollRef} />
       </div>
-      <MessageInput onSend={handleSend} disabled={!workspaceId || !channelId} />
+
+      <MessageInput
+        onSend={handleSend}
+        disabled={!workspaceId || !channelId}
+      />
     </div>
   );
 };

@@ -10,6 +10,9 @@ const {
   getChannels,
   sendMessage,
   getMessages,
+  createTask,
+  getTasks,
+  updateTaskStatus,
 } = require("../controllers/workspaceController");
 const { uploadFile } = require("../controllers/fileUploadController");
 const handleUpload = require("../middleware/uploadMiddleware");
@@ -39,6 +42,24 @@ router.get(
   "/:workspaceId/channels/:channelId/messages",
   checkWorkspaceRole,
   getMessages
+);
+
+router.post(
+  "/:workspaceId/tasks",
+  checkWorkspaceRole,
+  createTask
+);
+
+router.get(
+  "/:workspaceId/tasks",
+  checkWorkspaceRole,
+  getTasks
+);
+
+router.patch(
+  "/:workspaceId/tasks/:taskId",
+  checkWorkspaceRole,
+  updateTaskStatus
 );
 
 module.exports = router;

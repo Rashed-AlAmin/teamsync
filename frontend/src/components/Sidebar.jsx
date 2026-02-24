@@ -90,7 +90,9 @@ const Sidebar = () => {
       </div>
 
       <div className="border-t border-slate-800 p-3 flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-400 truncate flex-1">{user?.email}</span>
+        <span className="text-[10px] text-slate-400 truncate flex-1">
+          {user?.displayName || user?.email}
+        </span>
         <button onClick={logout} className="text-[10px] border border-slate-700 px-2 py-1 rounded hover:bg-slate-800 shrink-0">
           Logout
         </button>

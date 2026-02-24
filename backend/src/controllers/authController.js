@@ -1,7 +1,8 @@
 const { clientAuth, adminDb } = require("../config/firebase");
-const { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+const {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
 } = require("firebase/auth");
 
 // SIGNUP: Create user in Auth + Create Profile in Firestore
@@ -13,10 +14,18 @@ const signup = async (req, res) => {
     const userCredential = await createUserWithEmailAndPassword(clientAuth, email, password);
     const user = userCredential.user;
 
+    // 1b. Set displayName on the Firebase Auth user profile
+    const safeDisplayName = (displayName && displayName.trim()) || "New Member";
+    try {
+      await updateProfile(user, { displayName: safeDisplayName });
+    } catch (profileError) {
+      console.error("Failed to set displayName on user profile:", profileError);
+    }
+
     // 2. Create a document in "users" collection using adminDb
     await adminDb.collection("users").doc(user.uid).set({
       email,
-      displayName: displayName || "New Member",
+      displayName: safeDisplayName,
       createdAt: new Date(),
       workspaces: [] // To track which workspaces they belong to later
     });

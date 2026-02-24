@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -24,8 +25,29 @@ export const AuthProvider = ({ children }) => {
   const login = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
 
-  const signup = (email, password) =>
-    createUserWithEmailAndPassword(auth, email, password);
+  const signup = async (email, password, displayName) => {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
+
+    const safeName = displayName && displayName.trim();
+    if (safeName) {
+      try {
+        await updateProfile(userCredential.user, { displayName: safeName });
+        // refresh local user state so displayName is available immediately
+        setUser({
+          ...userCredential.user,
+          displayName: safeName,
+        });
+      } catch (err) {
+        console.error('Failed to set displayName on profile', err);
+      }
+    }
+
+    return userCredential;
+  };
 
   const logout = () => signOut(auth);
 

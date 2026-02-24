@@ -3,6 +3,7 @@ const { adminDb: db, adminAuth } = require("../config/firebase");
 
 const COLLECTION = "workspaces";
 const MEMBERS_COLLECTION = "members";
+const TASKS_COLLECTION = "tasks";
 
 const createWorkspace = async (req, res) => {
   try {
@@ -400,6 +401,133 @@ const getMessages = async (req, res) => {
   }
 };
 
+const createTask = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { title, description, assignedTo, status } = req.body || {};
+
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({
+        message: "Task title is required and must be a non-empty string",
+      });
+    }
+
+    if (!assignedTo || typeof assignedTo !== "string") {
+      return res.status(400).json({
+        message: "assignedTo (UID) is required",
+      });
+    }
+
+    const workspaceRef = db.collection(COLLECTION).doc(workspaceId);
+    const workspaceDoc = await workspaceRef.get();
+    if (!workspaceDoc.exists) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const normalizedStatus = status === "done" ? "done" : "todo";
+
+    const taskData = {
+      title: title.trim(),
+      description:
+        typeof description === "string" ? description.trim() : "",
+      assignedTo,
+      status: normalizedStatus,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const taskRef = await workspaceRef
+      .collection(TASKS_COLLECTION)
+      .add(taskData);
+
+    const saved = await taskRef.get();
+    const data = saved.data();
+
+    res.status(201).json({
+      id: saved.id,
+      ...data,
+      createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+    });
+  } catch (error) {
+    console.error("Error creating task:", error);
+    res.status(500).json({
+      message: "Failed to create task",
+    });
+  }
+};
+
+const getTasks = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+
+    const workspaceRef = db.collection(COLLECTION).doc(workspaceId);
+    const workspaceDoc = await workspaceRef.get();
+    if (!workspaceDoc.exists) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const snapshot = await workspaceRef
+      .collection(TASKS_COLLECTION)
+      .orderBy("createdAt", "asc")
+      .get();
+
+    const tasks = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+      };
+    });
+
+    res.json(tasks);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({
+      message: "Failed to fetch tasks",
+    });
+  }
+};
+
+const updateTaskStatus = async (req, res) => {
+  try {
+    const { workspaceId, taskId } = req.params;
+    const { status } = req.body || {};
+
+    if (status !== "todo" && status !== "done") {
+      return res.status(400).json({
+        message: "Status must be 'todo' or 'done'",
+      });
+    }
+
+    const taskRef = db
+      .collection(COLLECTION)
+      .doc(workspaceId)
+      .collection(TASKS_COLLECTION)
+      .doc(taskId);
+
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    await taskRef.update({ status });
+
+    const updated = await taskRef.get();
+    const data = updated.data();
+
+    res.json({
+      id: updated.id,
+      ...data,
+      createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+    });
+  } catch (error) {
+    console.error("Error updating task status:", error);
+    res.status(500).json({
+      message: "Failed to update task status",
+    });
+  }
+};
+
 module.exports = {
   createWorkspace,
   getWorkspaces,
@@ -409,4 +537,7 @@ module.exports = {
   getChannels,
   sendMessage,
   getMessages,
+   createTask,
+   getTasks,
+   updateTaskStatus,
 };

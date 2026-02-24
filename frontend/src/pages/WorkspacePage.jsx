@@ -56,23 +56,33 @@ const WorkspacePage = () => {
   const activeChannel =
     channels.find((c) => c.id === channelId) || null;
 
-  return (
-    <div className="flex h-full bg-slate-950 text-slate-50">
-      <ChannelList
-        workspaceId={workspaceId}
-        channels={channels}
-        loading={loading}
-        error={error}
-        onChannelCreated={handleChannelCreated}
-      />
-      <ChatWindow
-        workspaceId={workspaceId}
-        channel={activeChannel}
-        channelId={channelId}
-      />
-      <MemberList workspaceId={workspaceId} />
-    </div>
-  );
+    return (
+      /* FIX: Added overflow-hidden to the parent and flex-1 to children */
+      <div className="flex h-full w-full bg-slate-950 text-slate-50 overflow-hidden">
+        <div className="flex-shrink-0">
+          <ChannelList
+            workspaceId={workspaceId}
+            channels={channels}
+            loading={loading}
+            error={error}
+            onChannelCreated={handleChannelCreated}
+          />
+        </div>
+        
+        <main className="flex-1 min-w-0 h-full relative">
+          <ChatWindow
+            workspaceId={workspaceId}
+            channel={activeChannel}
+            channelId={channelId}
+          />
+        </main>
+    
+        {/* MemberList is already set up to be flex-1 min-w-0 internally */}
+        <aside className="hidden lg:flex w-80 flex-shrink-0">
+           <MemberList workspaceId={workspaceId} />
+        </aside>
+      </div>
+    );
 };
 
 export default WorkspacePage;
