@@ -1,127 +1,107 @@
 import { useState } from 'react';
-import { NavLink, useNavigate, useParams } from 'react-router-dom';
+import { NavLink, useParams } from 'react-router-dom';
 import api from '../lib/api';
+import { Plus, Hash } from 'lucide-react';
 
-const ChannelList = ({ workspaceId, channels, loading, error, onChannelCreated }) => {
+const ChannelList = ({ workspaceId, channels, loading, error, onChannelCreated, onSelect }) => {
   const { channelId } = useParams();
-  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [localError, setLocalError] = useState('');
 
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
     try {
       setCreating(true);
-      setLocalError('');
       const res = await api.post(`/workspaces/${workspaceId}/channels`, {
         name: name.trim(),
       });
       onChannelCreated?.(res.data);
       setName('');
       setIsModalOpen(false);
-      navigate(`/workspace/${workspaceId}/channel/${res.data.id}`);
     } catch (err) {
-      setLocalError('Failed to create channel');
+      console.error('Failed to create channel');
     } finally {
       setCreating(false);
     }
   };
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-950/90">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <div className="flex h-full w-full flex-col bg-slate-900/30">
+      {/* Header */}
+      <div className="flex h-12 items-center justify-between px-4 border-b border-slate-800/60">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Channels
         </span>
         <button
-          type="button"
           onClick={() => setIsModalOpen(true)}
-          className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-800 text-xs font-bold hover:bg-slate-700"
-          aria-label="Create channel"
+          className="flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-700 hover:text-slate-200 transition-colors"
+          title="New channel"
         >
-          +
+          <Plus size={14} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
-        {loading && (
-          <div className="px-2 py-1 text-xs text-slate-400">Loading channels...</div>
-        )}
-        {!loading && error && (
-          <div className="px-2 py-1 text-xs text-red-400">{error}</div>
-        )}
-        {!loading && !error && channels.length === 0 && (
-          <div className="px-2 py-1 text-xs text-slate-500">
-            No channels yet. Create the first one.
-          </div>
-        )}
-
-        <nav className="mt-1 space-y-1">
-          {channels.map((channel) => (
+      {/* Channel list */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+        {loading ? (
+          <div className="px-3 py-2 text-xs text-slate-500 animate-pulse">Loading channels…</div>
+        ) : error ? (
+          <div className="px-3 py-2 text-xs text-red-400">{error}</div>
+        ) : channels.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-slate-600">No channels yet.</div>
+        ) : (
+          channels.map((channel) => (
             <NavLink
               key={channel.id}
               to={`/workspace/${workspaceId}/channel/${channel.id}`}
+              onClick={() => onSelect?.()}
               className={({ isActive }) =>
-                [
-                  'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                  isActive || channel.id === channelId
-                    ? 'bg-slate-800 text-slate-50'
-                    : 'text-slate-300 hover:bg-slate-800/70 hover:text-slate-50',
-                ].join(' ')
+                `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-all duration-150 ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`
               }
             >
-              <span className="text-slate-500">#</span>
+              {/* Visible # icon with background */}
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700/70 text-slate-400">
+                <Hash size={11} />
+              </span>
               <span className="truncate">{channel.name}</span>
             </NavLink>
-          ))}
-        </nav>
+          ))
+        )}
       </div>
 
+      {/* Create Channel Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-800 p-5 shadow-xl">
-            <h3 className="text-sm font-semibold mb-3">Create Channel</h3>
-            {localError && (
-              <div className="mb-3 rounded-md bg-red-900/40 border border-red-700 px-3 py-2 text-xs text-red-100">
-                {localError}
-              </div>
-            )}
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label htmlFor="channel-name" className="block text-xs mb-1 text-slate-300">
-                  Channel name
-                </label>
-                <input
-                  id="channel-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  placeholder="general, announcements..."
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-800 p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-4">Create Channel</h3>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-indigo-600 transition-all"
+                placeholder="e.g. general"
+                autoFocus
+              />
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setLocalError('');
-                    setName('');
-                  }}
-                  className="rounded-md px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating || !name.trim()}
-                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
                 >
-                  {creating ? 'Creating...' : 'Create'}
+                  {creating ? 'Creating…' : 'Create'}
                 </button>
               </div>
             </form>
@@ -133,4 +113,3 @@ const ChannelList = ({ workspaceId, channels, loading, error, onChannelCreated }
 };
 
 export default ChannelList;
-

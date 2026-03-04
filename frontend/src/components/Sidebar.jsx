@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
+import { LogOut } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ onWorkspaceSelect }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState([]);
@@ -15,6 +16,7 @@ const Sidebar = () => {
 
   useEffect(() => {
     let active = true;
+
     const fetchWorkspaces = async () => {
       try {
         setError('');
@@ -42,6 +44,7 @@ const Sidebar = () => {
       setNewName('');
       setIsModalOpen(false);
       navigate(`/workspace/${res.data.id}`);
+      onWorkspaceSelect?.();
     } catch (err) {
       setError('Failed to create workspace');
     } finally {
@@ -50,69 +53,95 @@ const Sidebar = () => {
   };
 
   return (
-    // FIX: Changed w-64 to w-full max-w-[240px] to allow flex-shrink
-    <aside className="flex h-screen w-full max-w-[240px] flex-col border-r border-slate-800 bg-slate-950/95 text-slate-50 shrink-0">
-      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
-        {/* FIX: Added truncate to ensure the logo/name doesn't break the layout */}
-        <span className="text-sm font-semibold tracking-tight truncate mr-2">TeamSync</span>
+    <aside className="flex h-full w-full flex-col bg-slate-900/50 text-slate-50">
+      {/* Brand header */}
+      <div className="flex h-16 items-center border-b border-slate-800 px-4">
+        <span className="text-xl font-bold tracking-tight text-indigo-400">TeamSync</span>
+      </div>
+
+      {/* Workspace list */}
+      <div className="flex-1 overflow-y-auto py-4 space-y-1">
+        {loading && (
+          <p className="px-4 text-xs text-slate-500 animate-pulse">Loading…</p>
+        )}
+        {!loading && error && (
+          <p className="px-4 text-xs text-red-400">{error}</p>
+        )}
+        {!loading && !error && workspaces.map((ws) => (
+          <NavLink
+            key={ws.id}
+            to={`/workspace/${ws.id}`}
+            onClick={() => onWorkspaceSelect?.()}
+            className={({ isActive }) =>
+              `mx-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`
+            }
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-800 text-xs font-bold uppercase">
+              {ws.name?.charAt(0)}
+            </div>
+            <span className="truncate">{ws.name}</span>
+          </NavLink>
+        ))}
+
+        {/* Create new workspace button */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 font-bold hover:bg-indigo-500"
+          className="mx-3 mt-1 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-800 hover:text-slate-300 transition-colors"
         >
-          +
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-dashed border-slate-700 text-slate-600">
+            +
+          </div>
+          <span>New Workspace</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-3">
-        <h2 className="px-2 text-xs font-semibold uppercase text-slate-400 mb-2">Workspaces</h2>
-        {loading ? (
-          <div className="px-2 text-xs text-slate-400">Loading...</div>
-        ) : (
-          <nav className="space-y-1">
-            {workspaces.map((ws) => (
-              <NavLink
-                key={ws.id}
-                to={`/workspace/${ws.id}`}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                    isActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800/70'
-                  }`
-                }
-              >
-                <span className="h-6 w-6 shrink-0 flex items-center justify-center rounded bg-slate-800 text-[10px] uppercase">
-                  {ws.name?.charAt(0)}
-                </span>
-                <span className="truncate">{ws.name}</span>
-              </NavLink>
-            ))}
-          </nav>
-        )}
+      {/* User profile / logout */}
+      <div className="border-t border-slate-800 p-4">
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold">
+            {user?.email?.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="truncate text-xs text-slate-400">{user?.email}</p>
+          </div>
+          <button onClick={logout} className="text-slate-500 hover:text-red-400 transition-colors">
+            <LogOut size={16} />
+          </button>
+        </div>
       </div>
 
-      <div className="border-t border-slate-800 p-3 flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-400 truncate flex-1">
-          {user?.displayName || user?.email}
-        </span>
-        <button onClick={logout} className="text-[10px] border border-slate-700 px-2 py-1 rounded hover:bg-slate-800 shrink-0">
-          Logout
-        </button>
-      </div>
-
+      {/* Create workspace modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-800 p-6">
-            <h3 className="text-lg font-bold mb-4">New Workspace</h3>
-            <form onSubmit={handleCreate}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-800 p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-4">New Workspace</h3>
+            <form onSubmit={handleCreate} className="space-y-4">
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 p-2 rounded mb-4 outline-none focus:border-indigo-600"
-                placeholder="Workspace Name"
+                className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-indigo-600 transition-all"
+                placeholder="e.g. My Team"
                 autoFocus
               />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm hover:text-white transition-colors">Cancel</button>
-                <button type="submit" className="bg-indigo-600 px-4 py-2 text-sm rounded hover:bg-indigo-500 transition-colors">{creating ? '...' : 'Create'}</button>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !newName.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+                >
+                  {creating ? 'Creating…' : 'Create'}
+                </button>
               </div>
             </form>
           </div>
