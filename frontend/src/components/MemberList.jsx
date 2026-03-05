@@ -4,7 +4,7 @@ import api from '../lib/api';
 
 const MemberList = ({ workspaceId }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState('members'); // 'members' | 'tasks'
 
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
@@ -94,9 +94,7 @@ const MemberList = ({ workspaceId }) => {
   const handleToggleTaskStatus = async (task) => {
     const nextStatus = task.status === 'done' ? 'todo' : 'done';
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === task.id ? { ...t, status: nextStatus } : t,
-      ),
+      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)),
     );
 
     try {
@@ -105,9 +103,11 @@ const MemberList = ({ workspaceId }) => {
         { status: nextStatus },
       );
     } catch {
-      setTasks((prev) => prev.map((t) =>
-        t.id === task.id ? { ...t, status: task.status } : t,
-      ));
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id ? { ...t, status: task.status } : t,
+        ),
+      );
     }
   };
 
@@ -143,13 +143,13 @@ const MemberList = ({ workspaceId }) => {
   };
 
   return (
-    <div className="flex h-full flex-1 min-w-0 flex-col border-l border-slate-800 bg-slate-950/90">
+    <div className="flex h-full flex-1 min-w-0 flex-col border-l border-slate-800 bg-slate-900/50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('members')}
-            className={`rounded-md px-3 py-1 text-xs font-medium ${
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
               activeTab === 'members'
                 ? 'bg-slate-800 text-slate-50'
                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
@@ -160,7 +160,7 @@ const MemberList = ({ workspaceId }) => {
           <button
             type="button"
             onClick={() => setActiveTab('tasks')}
-            className={`rounded-md px-3 py-1 text-xs font-medium ${
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
               activeTab === 'tasks'
                 ? 'bg-slate-800 text-slate-50'
                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
@@ -211,7 +211,7 @@ const MemberList = ({ workspaceId }) => {
             members.map((m) => (
               <div
                 key={m.uid}
-                className="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-slate-900"
+                className="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-indigo-600/20 transition-colors"
               >
                 <span className="truncate text-slate-100">
                   {m.email || m.uid}
@@ -251,7 +251,7 @@ const MemberList = ({ workspaceId }) => {
               return (
                 <label
                   key={task.id}
-                  className="flex items-start gap-2 rounded-md px-2 py-1 text-xs hover:bg-slate-900 cursor-pointer"
+                  className="flex items-start gap-2 rounded-md px-2 py-1 text-xs hover:bg-indigo-600/20 transition-colors cursor-pointer"
                 >
                   <input
                     type="checkbox"
@@ -260,17 +260,15 @@ const MemberList = ({ workspaceId }) => {
                     className="mt-0.5 h-3 w-3 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center gap-2">
-                      <span
-                        className={`truncate ${
-                          task.status === 'done'
-                            ? 'line-through text-slate-500'
-                            : 'text-slate-100'
-                        }`}
-                      >
-                        {task.title}
-                      </span>
-                    </div>
+                    <span
+                      className={`truncate ${
+                        task.status === 'done'
+                          ? 'line-through text-slate-500'
+                          : 'text-slate-100'
+                      }`}
+                    >
+                      {task.title}
+                    </span>
                     {task.description && (
                       <div className="text-[11px] text-slate-400 truncate">
                         {task.description}
@@ -287,7 +285,7 @@ const MemberList = ({ workspaceId }) => {
         </div>
       )}
 
-      {/* Invite modal */}
+       {/* Invite modal */}
       {inviteOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-800 p-5 shadow-xl">
@@ -436,4 +434,3 @@ const MemberList = ({ workspaceId }) => {
 };
 
 export default MemberList;
-

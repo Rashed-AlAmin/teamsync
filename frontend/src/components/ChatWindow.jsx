@@ -8,22 +8,23 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const scrollRef = useRef(null);
+  const containerRef = useRef(null);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     setMessages([]);
     setError('');
     setLoading(true);
 
-    if (!workspaceId || !channelId) {
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     let intervalId;
 
     const load = async () => {
+      if (!workspaceId || !channelId) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
       try {
         const res = await api.get(
           `/workspaces/${workspaceId}/channels/${channelId}/messages`,
@@ -83,9 +84,17 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
     return groups;
   }, [messages]);
 
+  // Sticky scroll: only auto-scroll if user is near the bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({
+    const el = containerRef.current;
+    if (!el) return;
+
+    const distanceFromBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
+
+    const isNearBottom = distanceFromBottom < 100; // px threshold
+    if (isNearBottom && bottomRef.current) {
+      bottomRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'end',
       });
@@ -111,7 +120,6 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
         `/workspaces/${workspaceId}/channels/${channelId}/messages`,
         { content },
       );
-      // Polling will pick up the confirmed message from backend.
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     }
@@ -138,7 +146,10 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+      >
         {loading && (
           <div className="text-xs text-slate-400">Loading messages...</div>
         )}
@@ -181,7 +192,7 @@ const ChatWindow = ({ workspaceId, channel, channelId }) => {
               ))}
             </div>
           ))}
-        <div ref={scrollRef} />
+        <div ref={bottomRef} />
       </div>
 
       <MessageInput
